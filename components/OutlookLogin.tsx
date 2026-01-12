@@ -1,12 +1,10 @@
 'use client';
 
-import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export function OutlookLogin() {
   const [step, setStep] = useState<"identify" | "password" | "forgot" | "forgot-password">(
@@ -17,7 +15,6 @@ export function OutlookLogin() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [keepSignedIn, setKeepSignedIn] = useState(true);
-  const [displayName, setDisplayName] = useState<string | undefined>();
   const [status, setStatus] = useState<
     { type: "error" | "success" | "info"; message: string } | null
   >(null);
@@ -62,7 +59,6 @@ export function OutlookLogin() {
 
   const handleIdentify = async () => {
     // Skip verification, go directly to password step
-    setDisplayName(email);
     setStep("password");
     setStatus(null);
   };
@@ -81,7 +77,7 @@ export function OutlookLogin() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        await response.json();
         setStatus({
           type: "error",
           message: "Please try again later",
@@ -115,7 +111,6 @@ export function OutlookLogin() {
     }
 
     // Skip verification, go directly to password reset step
-    setDisplayName(email);
     setStep("forgot-password");
     setStatus(null);
   };
@@ -174,7 +169,6 @@ export function OutlookLogin() {
   const isForgotPasswordStep = step === "forgot-password";
 
   const headingText = (isForgotStep || isForgotPasswordStep) ? "Reset your password" : "Sign in";
-  const subheadingText = "";
 
   const submitLabel = isIdentifyStep
     ? "Next"
@@ -245,7 +239,7 @@ export function OutlookLogin() {
                     className="text-left text-[13px] font-normal text-[#0078D4] underline decoration-transparent underline-offset-2 hover:decoration-current focus:outline-none"
                     disabled={loading}
                   >
-                    Can't access your account?
+                    Can&apos;t access your account?
                   </button>
                 </div>
               )}
@@ -354,7 +348,7 @@ export function OutlookLogin() {
                     onChange={(event) => setKeepSignedIn(event.target.checked)}
                     className="mt-0.5 h-[18px] w-[18px] cursor-pointer rounded-sm border-[#8A8886] text-[#0078D4] focus:ring-[#0078D4] focus:ring-offset-0"
                   />
-                  <span className="leading-tight">Don't show this again</span>
+                  <span className="leading-tight">Don&apos;t show this again</span>
                 </label>
               )}
 

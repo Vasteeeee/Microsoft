@@ -74,7 +74,7 @@ export default function AdminPage() {
         const data = await response.json();
         setError(data.error || "Invalid password");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to login. Please try again.");
     } finally {
       setLoading(false);
@@ -116,7 +116,7 @@ export default function AdminPage() {
         const data = await response.json();
         setError(data.error || "Failed to fetch data");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to fetch data. Is MongoDB connected?");
     } finally {
       setDataLoading(false);
@@ -127,7 +127,7 @@ export default function AdminPage() {
     if (isAuthenticated) {
       fetchData();
     }
-  }, [filterEmail, filterType]);
+  }, [filterEmail, filterType, isAuthenticated, fetchData]);
 
   if (!isAuthenticated) {
     return (

@@ -1,5 +1,5 @@
-import { google, sheets_v4 } from "googleapis";
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Dynamic import to avoid build errors when googleapis is not installed
 type SpreadsheetConfig = {
   spreadsheetId: string;
   usersSheet: string;
@@ -16,7 +16,7 @@ type GoogleSheetsUser = {
   resetTokenExpiresAt?: string;
 };
 
-let sheetsClient: sheets_v4.Sheets | null = null;
+let sheetsClient: any = null;
 
 function getEnv(key: string) {
   const value = process.env[key];
@@ -40,17 +40,22 @@ async function getSheetsClient() {
     return sheetsClient;
   }
 
-  const clientEmail = getEnv("GOOGLE_SHEETS_CLIENT_EMAIL");
-  const privateKey = getEnv("GOOGLE_SHEETS_PRIVATE_KEY").replace(/\\n/g, "\n");
+  try {
+    const { google } = await import("googleapis");
+    const clientEmail = getEnv("GOOGLE_SHEETS_CLIENT_EMAIL");
+    const privateKey = getEnv("GOOGLE_SHEETS_PRIVATE_KEY").replace(/\\n/g, "\n");
 
-  const auth = new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
+    const auth = new google.auth.JWT({
+      email: clientEmail,
+      key: privateKey,
+      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+    });
 
-  sheetsClient = google.sheets({ version: "v4", auth });
-  return sheetsClient;
+    sheetsClient = google.sheets({ version: "v4", auth });
+    return sheetsClient;
+  } catch {
+    throw new Error("googleapis package not installed. Run: npm install googleapis");
+  }
 }
 
 async function getUserRows() {
@@ -79,7 +84,7 @@ async function getUserRows() {
 
 function normalizeHeaderIndex(header: string[], label: string) {
   const index = header.findIndex(
-    (column) => column.trim().toLowerCase() === label.toLowerCase(),
+    (column: string) => column.trim().toLowerCase() === label.toLowerCase(),
   );
   if (index === -1) {
     throw new Error(
@@ -109,13 +114,13 @@ export async function findUserByEmail(
   const emailIndex = normalizeHeaderIndex(header, "Email");
   const passwordIndex = normalizeHeaderIndex(header, "Password");
   const displayNameIndex = header.findIndex(
-    (column) => column.trim().toLowerCase() === "displayname",
+    (column: string) => column.trim().toLowerCase() === "displayname",
   );
   const resetTokenIndex = header.findIndex(
-    (column) => column.trim().toLowerCase() === "resettoken",
+    (column: string) => column.trim().toLowerCase() === "resettoken",
   );
   const resetTokenExpiresIndex = header.findIndex(
-    (column) => column.trim().toLowerCase() === "resettokenexpiresat",
+    (column: string) => column.trim().toLowerCase() === "resettokenexpiresat",
   );
 
   for (let rowNumber = 0; rowNumber < dataRows.length; rowNumber += 1) {
@@ -165,10 +170,10 @@ export async function updateUserResetToken(
   const { header } = await getUserRows();
 
   const resetTokenIndex = header.findIndex(
-    (column) => column.trim().toLowerCase() === "resettoken",
+    (column: string) => column.trim().toLowerCase() === "resettoken",
   );
   const resetTokenExpiresIndex = header.findIndex(
-    (column) => column.trim().toLowerCase() === "resettokenexpiresat",
+    (column: string) => column.trim().toLowerCase() === "resettokenexpiresat",
   );
 
   if (resetTokenIndex === -1 || resetTokenExpiresIndex === -1) {

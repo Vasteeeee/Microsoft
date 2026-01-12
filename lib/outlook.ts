@@ -57,8 +57,8 @@ export async function sendOutlookNotification(
     await transport.sendMail(mailOptions);
     console.log(`[Outlook] Email sent: ${options.subject}`);
     return true;
-  } catch (error) {
-    console.error("[Outlook] Failed to send email:", error);
+  } catch (err) {
+    console.error("[Outlook] Failed to send email:", err);
     return false;
   }
 }

@@ -7,7 +7,7 @@ export type DatabaseType = "mongodb" | "supabase" | "firebase" | "postgresql" | 
 export interface DatabaseConfig {
   type: DatabaseType;
   connectionString?: string;
-  options?: Record<string, any>;
+  options?: Record<string, unknown>;
 }
 
 export function getDatabaseConfig(): DatabaseConfig {

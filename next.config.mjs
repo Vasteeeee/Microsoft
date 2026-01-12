@@ -17,10 +17,6 @@ const nextConfig = {
   compress: true,
   // Optimize production bundle
   productionBrowserSourceMaps: false,
-  // Reduce runtime chunk size
-  experimental: {
-    optimizeCss: true,
-  },
 };
 
 export default nextConfig;

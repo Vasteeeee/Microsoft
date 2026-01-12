@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     // Build query
-    const query: any = {};
+    const query: Record<string, unknown> = {};
     if (type) {
       query.type = type;
     }
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       },
     ]);
 
-    const statsMap = stats.reduce((acc: any, stat: any) => {
+    const statsMap = stats.reduce((acc: Record<string, number>, stat: { _id: string; count: number }) => {
       acc[stat._id] = stat.count;
       return acc;
     }, {});
